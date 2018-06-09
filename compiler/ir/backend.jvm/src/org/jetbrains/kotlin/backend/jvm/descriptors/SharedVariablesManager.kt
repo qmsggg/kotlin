@@ -1,17 +1,6 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.backend.jvm.descriptors
@@ -148,12 +137,9 @@ class JvmSharedVariablesManager(val builtIns: KotlinBuiltIns) : SharedVariablesM
 
         val refConstructorCall = IrCallImpl(
             originalDeclaration.startOffset, originalDeclaration.endOffset,
-            refConstructor, refConstructorTypeArguments
+            TODO(), TODO()
         )
-        return IrVariableImpl(
-            originalDeclaration.startOffset, originalDeclaration.endOffset, originalDeclaration.origin,
-            sharedVariableDescriptor, refConstructorCall
-        )
+        return TODO()
     }
 
     override fun defineSharedValue(
@@ -168,16 +154,11 @@ class JvmSharedVariablesManager(val builtIns: KotlinBuiltIns) : SharedVariablesM
         val elementPropertyDescriptor =
             primitiveRefDescriptorsProvider?.elementField ?: objectRefDescriptorsProvider.genericElementField
 
-        val sharedVariableInitialization = IrSetFieldImpl(
-            initializer.startOffset, initializer.endOffset,
-            elementPropertyDescriptor,
-            IrGetValueImpl(initializer.startOffset, initializer.endOffset, sharedVariableDeclaration.symbol),
-            initializer
-        )
+        val sharedVariableInitialization = TODO()
 
         return IrCompositeImpl(
-            originalDeclaration.startOffset, originalDeclaration.endOffset, builtIns.unitType, null,
-            listOf(sharedVariableDeclaration, sharedVariableInitialization)
+            originalDeclaration.startOffset, originalDeclaration.endOffset, TODO(), null,
+            listOf(sharedVariableDeclaration, TODO())
         )
     }
 
@@ -188,30 +169,9 @@ class JvmSharedVariablesManager(val builtIns: KotlinBuiltIns) : SharedVariablesM
     }
 
     override fun getSharedValue(sharedVariableSymbol: IrVariableSymbol, originalGet: IrGetValue): IrExpression =
-        IrGetFieldImpl(
-            originalGet.startOffset, originalGet.endOffset,
-            getElementFieldDescriptor(originalGet.descriptor.type),
-            IrGetValueImpl(
-                originalGet.startOffset,
-                originalGet.endOffset,
-                sharedVariableSymbol
-            ),
-            originalGet.origin
-        )
-
+        TODO()
     override fun setSharedValue(sharedVariableSymbol: IrVariableSymbol, originalSet: IrSetVariable): IrExpression =
-        IrSetFieldImpl(
-            originalSet.startOffset, originalSet.endOffset,
-            getElementFieldDescriptor(originalSet.descriptor.type),
-            IrGetValueImpl(
-                originalSet.startOffset,
-                originalSet.endOffset,
-                sharedVariableSymbol
-            ),
-            originalSet.value,
-            originalSet.origin
-        )
-
+        TODO()
     private fun getSharedVariableType(valueType: KotlinType): KotlinType =
         primitiveRefDescriptorProviders[getPrimitiveType(valueType)]?.refType ?: objectRefDescriptorsProvider.getRefType(valueType)
 

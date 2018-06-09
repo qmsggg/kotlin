@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -87,13 +87,13 @@ open class IrIntrinsicFunction(
         val args = listOfNotNull(expression.dispatchReceiver, expression.extensionReceiver) +
                 expression.descriptor.valueParameters.mapIndexed { i, descriptor ->
                     expression.getValueArgument(i) ?: if (descriptor.isVararg)
-                        IrEmptyVarargExpression(descriptor.type, UNDEFINED_OFFSET, UNDEFINED_OFFSET)
+                        IrEmptyVarargExpression(TODO(), UNDEFINED_OFFSET, UNDEFINED_OFFSET)
                     else error("Unknown parameter: $descriptor in $expression")
                 }
 
         args.forEachIndexed { i, irExpression ->
             if (irExpression is IrEmptyVarargExpression) {
-                val parameterType = codegen.typeMapper.mapType(irExpression.type)
+                val parameterType = TODO()
                 StackValue.operation(parameterType) {
                     it.aconst(0)
                     it.newarray(AsmUtil.correctElementType(parameterType))
@@ -162,5 +162,5 @@ fun IrMemberAccessExpression.receiverAndArgs(): List<IrExpression> {
 }
 
 fun List<IrExpression>.asmTypes(context: JvmBackendContext): List<Type> {
-    return map { context.state.typeMapper.mapType(it.type) }
+    return map { TODO() }
 }

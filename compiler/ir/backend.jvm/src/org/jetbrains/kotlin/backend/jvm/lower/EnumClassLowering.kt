@@ -1,17 +1,6 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.backend.jvm.lower
@@ -66,9 +55,9 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
         val valueParameter0 = substitutedArrayOfFun.valueParameters[0]
         val arg0VarargType = valueParameter0.type
         val arg0VarargElementType = valueParameter0.varargElementType!!
-        val arg0 = IrVarargImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, arg0VarargType, arg0VarargElementType, arrayElements)
+        val arg0 = IrVarargImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), TODO(), arrayElements)
 
-        return IrCallImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, substitutedArrayOfFun, typeArguments).apply {
+        return IrCallImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), TODO()).apply {
             putValueArgument(0, arg0)
         }
     }
@@ -127,7 +116,7 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
                 enumConstructor.body!! // will be transformed later
             ).apply {
                 parent = enumClass
-                createParameterDeclarations()
+//                createParameterDeclarations()
                 loweredEnumConstructors[constructorDescriptor] = this
                 constructorDescriptor.valueParameters.forEach {
                     loweredEnumConstructorParameters[it] = valueParameters[2 + it.index]
@@ -191,15 +180,7 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
         private fun createFieldForEnumEntry(enumEntry: IrEnumEntry): IrField {
             val fieldSymbol = context.descriptorsFactory.getSymbolForEnumEntry(enumEntry.symbol)
 
-            return IrFieldImpl(
-                enumEntry.startOffset, enumEntry.endOffset, JvmLoweredDeclarationOrigin.FIELD_FOR_ENUM_ENTRY,
-                fieldSymbol
-            ).also {
-                it.initializer = IrExpressionBodyImpl(enumEntry.initializerExpression!!)
-                enumEntryFields.add(it)
-                enumEntriesByField[it] = enumEntry
-            }
-        }
+            return TODO()        }
 
         private fun setupSynthesizedEnumClassMembers() {
             val irField = createSyntheticValuesFieldDeclaration()
@@ -224,19 +205,12 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
 
             val irValuesInitializer = createSyntheticValuesFieldInitializerExpression()
 
-            return IrFieldImpl(
-                UNDEFINED_OFFSET, UNDEFINED_OFFSET, JvmLoweredDeclarationOrigin.FIELD_FOR_ENUM_VALUES,
-                createSyntheticValuesFieldDescriptor(valuesArrayType),
-                IrExpressionBodyImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irValuesInitializer)
-            ).also { valuesField = it }
-        }
+            return TODO()        }
 
         private fun createSyntheticValuesFieldInitializerExpression(): IrExpression =
             createArrayOfExpression(
-                irClass.defaultType,
-                enumEntryFields.map { irField ->
-                    IrGetFieldImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irField.symbol)
-                })
+                TODO(),
+                TODO())
 
         private fun createSyntheticValuesFieldDescriptor(valuesArrayType: SimpleType): PropertyDescriptorImpl {
             return JvmPropertyDescriptorImpl.createStaticVal(
@@ -260,30 +234,23 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
                 val endOffset = enumConstructorCall.endOffset
                 val origin = enumConstructorCall.origin
 
-                val result = IrDelegatingConstructorCallImpl(
-                    startOffset,
-                    endOffset,
-                    enumConstructorCall.symbol,
-                    enumConstructorCall.descriptor,
-                    enumConstructorCall.typeArgumentsCount
-                )
-
-                assert(result.descriptor.valueParameters.size == 2) {
-                    "Enum(String, Int) constructor call expected:\n${result.dump()}"
-                }
-
-                val nameParameter = irEnumConstructor.valueParameters.getOrElse(0) {
-                    throw AssertionError("No 'name' parameter in enum constructor: ${irEnumConstructor.dump()}")
-                }
-
-                val ordinalParameter = irEnumConstructor.valueParameters.getOrElse(1) {
-                    throw AssertionError("No 'ordinal' parameter in enum constructor: ${irEnumConstructor.dump()}")
-                }
-
-                result.putValueArgument(0, IrGetValueImpl(startOffset, endOffset, nameParameter.symbol, origin))
-                result.putValueArgument(1, IrGetValueImpl(startOffset, endOffset, ordinalParameter.symbol, origin))
-
-                return result
+                val result = TODO()
+//                assert(result.descriptor.valueParameters.size == 2) {
+//                    "Enum(String, Int) constructor call expected:\n${result.dump()}"
+//                }
+//
+//                val nameParameter = irEnumConstructor.valueParameters.getOrElse(0) {
+//                    throw AssertionError("No 'name' parameter in enum constructor: ${irEnumConstructor.dump()}")
+//                }
+//
+//                val ordinalParameter = irEnumConstructor.valueParameters.getOrElse(1) {
+//                    throw AssertionError("No 'ordinal' parameter in enum constructor: ${irEnumConstructor.dump()}")
+//                }
+//
+//                result.putValueArgument(0, IrGetValueImpl(startOffset, endOffset, nameParameter.symbol, origin))
+//                result.putValueArgument(1, IrGetValueImpl(startOffset, endOffset, ordinalParameter.symbol, origin))
+//
+//                return result
             }
 
             override fun transform(delegatingConstructorCall: IrDelegatingConstructorCall): IrExpression {
@@ -295,20 +262,13 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
                     throw AssertionError("Constructor called in enum entry initializer should've been lowered: $descriptor")
                 }
 
-                val result = IrDelegatingConstructorCallImpl(
-                    startOffset,
-                    endOffset,
-                    loweredDelegatedConstructor.symbol,
-                    loweredDelegatedConstructor.descriptor,
-                    loweredDelegatedConstructor.typeParameters.size
-                )
-
-                result.putValueArgument(0, IrGetValueImpl(startOffset, endOffset, irEnumConstructor.valueParameters[0].symbol))
-                result.putValueArgument(1, IrGetValueImpl(startOffset, endOffset, irEnumConstructor.valueParameters[1].symbol))
+                val result = TODO()
+//                result.putValueArgument(0, IrGetValueImpl(startOffset, endOffset, irEnumConstructor.valueParameters[0].symbol))
+//                result.putValueArgument(1, IrGetValueImpl(startOffset, endOffset, irEnumConstructor.valueParameters[1].symbol))
 
                 descriptor.valueParameters.forEach { valueParameter ->
                     val i = valueParameter.index
-                    result.putValueArgument(i + 2, delegatingConstructorCall.getValueArgument(i))
+//                    result.putValueArgument(i + 2, delegatingConstructorCall.getValueArgument(i))
                 }
 
                 return result
@@ -330,8 +290,8 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
 
                 val result = createConstructorCall(startOffset, endOffset, loweredConstructor)
 
-                result.putValueArgument(0, IrConstImpl.string(startOffset, endOffset, context.builtIns.stringType, name))
-                result.putValueArgument(1, IrConstImpl.int(startOffset, endOffset, context.builtIns.intType, ordinal))
+//                result.putValueArgument(0, IrConstImpl.string(startOffset, endOffset, endOffsetcontext.builtIns.stringType, name))
+//                result.putValueArgument(1, IrConstImpl.int(startOffset, endOffset, context.builtIns.intType, ordinal))
 
                 descriptor.valueParameters.forEach { valueParameter ->
                     val i = valueParameter.index
@@ -354,23 +314,11 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
 
         private inner class InEnumEntryClassConstructor(enumEntry: IrEnumEntry) : InEnumEntry(enumEntry) {
             override fun createConstructorCall(startOffset: Int, endOffset: Int, loweredConstructor: IrConstructor) =
-                IrDelegatingConstructorCallImpl(
-                    startOffset,
-                    endOffset,
-                    loweredConstructor.symbol,
-                    loweredConstructor.descriptor,
-                    loweredConstructor.typeParameters.size
-                )
-        }
+                TODO()        }
 
         private inner class InEnumEntryInitializer(enumEntry: IrEnumEntry) : InEnumEntry(enumEntry) {
             override fun createConstructorCall(startOffset: Int, endOffset: Int, loweredConstructor: IrConstructor) =
-                IrCallImpl(
-                    startOffset,
-                    endOffset,
-                    loweredConstructor.symbol
-                )
-        }
+                TODO()        }
 
         private inner class EnumClassBodyTransformer : IrElementTransformerVoid() {
             private var enumConstructorCallTransformer: EnumConstructorCallTransformer? = null
@@ -468,28 +416,28 @@ class EnumClassLowering(val context: JvmBackendContext) : ClassLoweringPass {
                 val substitutedValueOf = unsubstitutedValueOf.substitute(typeSubstitutor)!!
 
                 val irValueOfCall =
-                    IrCallImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, substitutedValueOf, mapOf(typeParameterT to enumClassType))
-                irValueOfCall.putValueArgument(
-                    0, IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valueOfFunction.valueParameters[0].symbol)
-                )
+                    TODO()
+//                irValueOfCall.putValueArgument(
+//                    0, IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valueOfFunction.valueParameters[0].symbol)
+//                )
 
                 return IrBlockBodyImpl(
                     UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-                    listOf(IrReturnImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valueOfFunction.symbol, irValueOfCall))
+                    listOf(TODO())
                 )
             }
 
             private fun createEnumValuesBody(valuesField: IrField): IrBody {
-                val cloneFun = valuesField.type.memberScope.findSingleFunction(Name.identifier("clone"))
+                val cloneFun = TODO()
 
-                val irCloneValues = IrCallImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, cloneFun).apply {
-                    dispatchReceiver = IrGetFieldImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valuesField.symbol)
-                }
-
-                return IrBlockBodyImpl(
-                    UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-                    listOf(IrReturnImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valuesFunction.symbol, irCloneValues))
-                )
+//                val irCloneValues = IrCallImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, cloneFun).apply {
+//                    dispatchReceiver = TODO()//IrGetFieldImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, valuesField.symbol)
+//                }
+//
+//                return IrBlockBodyImpl(
+//                    UNDEFINED_OFFSET, UNDEFINED_OFFSET,
+//                    listOf(TODO())
+//                )
             }
         }
     }

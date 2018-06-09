@@ -1,17 +1,6 @@
 /*
- * Copyright 2010-2016 JetBrains s.r.o.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * that can be found in the license/LICENSE.txt file.
  */
 
 package org.jetbrains.kotlin.backend.jvm.intrinsics
@@ -42,12 +31,12 @@ class Equals(val operator: IElementType) : IntrinsicMethod() {
         val receiverAndArgs = expression.receiverAndArgs().apply {
             assert(size == 2) { "Equals expects 2 arguments, but ${joinToString()}" }
         }
-        var leftType = context.state.typeMapper.mapType(receiverAndArgs.first().type)
-        var rightType = context.state.typeMapper.mapType(receiverAndArgs.last().type)
+        var leftType = TODO()
+        var rightType = TODO()
 
         if (isPrimitive(leftType) != isPrimitive(rightType)) {
-            leftType = boxType(leftType)
-            rightType = boxType(rightType)
+            leftType = TODO()
+            rightType = TODO()
         }
 
         return object : IrIntrinsicFunction(expression, signature, context, listOf(leftType, rightType)) {
@@ -91,13 +80,13 @@ class Ieee754Equals(val operandType: Type) : IntrinsicMethod() {
         }
 
         val arg0Type = expression.getValueArgument(0)!!.type
-        if (!arg0Type.isPrimitiveNumberOrNullableType()) throw AssertionError("Should be primitive or nullable primitive type: $arg0Type")
+//        if (!arg0Type.isPrimitiveNumberOrNullableType()) throw AssertionError("Should be primitive or nullable primitive type: $arg0Type")
 
         val arg1Type = expression.getValueArgument(1)!!.type
-        if (!arg1Type.isPrimitiveNumberOrNullableType()) throw AssertionError("Should be primitive or nullable primitive type: $arg1Type")
+//        if (!arg1Type.isPrimitiveNumberOrNullableType()) throw AssertionError("Should be primitive or nullable primitive type: $arg1Type")
 
-        val arg0isNullable = arg0Type.isMarkedNullable
-        val arg1isNullable = arg1Type.isMarkedNullable
+        val arg0isNullable = true
+        val arg1isNullable = true
 
         return when {
             !arg0isNullable && !arg1isNullable ->

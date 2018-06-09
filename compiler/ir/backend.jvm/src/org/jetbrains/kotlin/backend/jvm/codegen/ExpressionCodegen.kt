@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
+ * Copyright 2010-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license
  * that can be found in the license/LICENSE.txt file.
  */
 
@@ -161,7 +161,7 @@ class ExpressionCodegen(
             //coerceNotToUnit(r.type, Type.VOID_TYPE)
             exp.accept(this, data)
         }
-        return coerceNotToUnit(result.type, expression.type)
+        return coerceNotToUnit(result.type, TODO())
     }
 
     override fun visitMemberAccess(expression: IrMemberAccessExpression, data: BlockInfo): StackValue {
@@ -197,7 +197,7 @@ class ExpressionCodegen(
         if (args.size == 1) {
             val sizeExpression = expression.getValueArgument(0)!!
             gen(sizeExpression, Type.INT_TYPE, data)
-            newArrayInstruction(expression.type)
+            newArrayInstruction(TODO())
             return expression.onStack
         }
 
@@ -425,7 +425,7 @@ class ExpressionCodegen(
         val hasSpread = arguments.firstIsInstanceOrNull<IrSpreadElement>() != null
 
         if (hasSpread) {
-            val arrayOfReferences = KotlinBuiltIns.isArray(outType)
+            val arrayOfReferences = KotlinBuiltIns.isArray(TODO())
             if (size == 1) {
                 // Arrays.copyOf(receiverValue, newLength)
                 val argument = (arguments[0] as IrSpreadElement).expression
@@ -473,7 +473,7 @@ class ExpressionCodegen(
                 if (arrayOfReferences) {
                     mv.dup()
                     mv.invokevirtual(owner, "size", "()I", false)
-                    newArrayInstruction(outType)
+                    newArrayInstruction(TODO())
                     mv.invokevirtual(owner, "toArray", toArrayDescriptor, false)
                     mv.checkcast(type)
                 } else {
@@ -482,8 +482,8 @@ class ExpressionCodegen(
             }
         } else {
             mv.iconst(size)
-            newArrayInstruction(expression.type)
-            val elementKotlinType = outType.constructor.builtIns.getArrayElementType(outType)
+            newArrayInstruction(TODO())
+            val elementKotlinType = TODO()
             for ((i, element) in expression.elements.withIndex()) {
                 mv.dup()
                 StackValue.constant(i, Type.INT_TYPE).put(Type.INT_TYPE, mv)
@@ -492,7 +492,7 @@ class ExpressionCodegen(
                     .arrayElement(
                         elementType,
                         elementKotlinType,
-                        StackValue.onStack(elementType, outType),
+                        StackValue.onStack(elementType, TODO()),
                         StackValue.onStack(Type.INT_TYPE)
                     )
                     .store(rightSide, mv)
@@ -536,7 +536,7 @@ class ExpressionCodegen(
 
 
     override fun visitWhen(expression: IrWhen, data: BlockInfo): StackValue =
-        genIfWithBranches(expression.branches[0], data, expression.type, expression.branches.drop(1))
+        genIfWithBranches(expression.branches[0], data, TODO(), expression.branches.drop(1))
 
 
     private fun genIfWithBranches(branch: IrBranch, data: BlockInfo, type: KotlinType, otherBranches: List<IrBranch>): StackValue {
@@ -571,7 +571,7 @@ class ExpressionCodegen(
 
 
     override fun visitTypeOperator(expression: IrTypeOperatorCall, data: BlockInfo): StackValue {
-        val asmType = expression.typeOperand.asmType
+        val asmType = TODO()
         when (expression.operator) {
             IrTypeOperator.IMPLICIT_COERCION_TO_UNIT -> {
                 expression.argument.accept(this, data)
@@ -590,14 +590,14 @@ class ExpressionCodegen(
                     StackValue.putUnitInstance(mv)
                 }
                 val boxedType = boxType(asmType)
-                generateAsCast(mv, expression.typeOperand, boxedType, expression.operator == IrTypeOperator.SAFE_CAST)
+                generateAsCast(mv, TODO(), boxedType, expression.operator == IrTypeOperator.SAFE_CAST)
                 return onStack(boxedType)
             }
 
             IrTypeOperator.INSTANCEOF, IrTypeOperator.NOT_INSTANCEOF -> {
                 gen(expression.argument, OBJECT_TYPE, data)
                 val type = boxType(asmType)
-                generateIsCheck(mv, expression.typeOperand, type)
+                generateIsCheck(mv, TODO(), type)
                 if (IrTypeOperator.NOT_INSTANCEOF == expression.operator) {
                     StackValue.not(StackValue.onStack(Type.BOOLEAN_TYPE)).put(Type.BOOLEAN_TYPE, mv)
                 }
@@ -615,7 +615,7 @@ class ExpressionCodegen(
 
             IrTypeOperator.IMPLICIT_INTEGER_COERCION -> {
                 gen(expression.argument, Type.INT_TYPE, data)
-                StackValue.coerce(Type.INT_TYPE, typeMapper.mapType(expression.type), mv)
+                StackValue.coerce(Type.INT_TYPE, TODO(), mv)
             }
         }
         return expression.onStack
@@ -920,13 +920,13 @@ class ExpressionCodegen(
             assert(classReference is IrGetClass)
             JavaClassProperty.generateImpl(mv, gen((classReference as IrGetClass).argument, data))
         } else {
-            val type = classReference.classType
+            val type = TODO()
             if (TypeUtils.isTypeParameter(type)) {
                 assert(TypeUtils.isReifiedTypeParameter(type)) { "Non-reified type parameter under ::class should be rejected by type checker: " + type }
                 putReifiedOperationMarkerIfTypeIsReifiedParameter(type, ReifiedTypeInliner.OperationKind.JAVA_CLASS, mv, this)
             }
 
-            putJavaLangClassInstance(mv, typeMapper.mapType(type))
+            putJavaLangClassInstance(mv, TODO())
         }
 
         if (wrapIntoKClass) {
@@ -945,7 +945,7 @@ class ExpressionCodegen(
     }
 
     val IrExpression.asmType: Type
-        get() = typeMapper.mapType(this.type)
+        get() = TODO()
 
     val IrExpression.onStack: StackValue
         get() = StackValue.onStack(this.asmType)
@@ -1017,13 +1017,13 @@ class ExpressionCodegen(
         val mappings = TypeParameterMappings()
         for (entry in typeArguments.entries) {
             val key = entry.key
-            val type = entry.value
+            val type = TODO()
 
             val isReified = key.isReified || InlineUtil.isArrayConstructorWithLambda(descriptor)
 
-            val typeParameterAndReificationArgument = extractReificationArgument(type)
+            val typeParameterAndReificationArgument = extractReificationArgument(TODO())
             if (typeParameterAndReificationArgument == null) {
-                val approximatedType = approximateCapturedTypes(entry.value).upper
+                val approximatedType = approximateCapturedTypes(TODO()).upper
                 // type is not generic
                 val signatureWriter = BothSignatureWriter(BothSignatureWriter.Mode.TYPE)
                 val asmType = typeMapper.mapTypeParameter(approximatedType, signatureWriter)
