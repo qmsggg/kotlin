@@ -63,6 +63,10 @@ internal enum class OptionsParser {
                             isIncludeOverloadUsages = true
                             isUsages = true
                         }
+                        "inherited" -> {
+                            isIncludeInherited = true
+                            isUsages = true
+                        }
                         else -> throw IllegalStateException("Invalid option: " + s)
                     }
                 }
