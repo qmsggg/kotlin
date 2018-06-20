@@ -5,10 +5,10 @@
 
 package org.jetbrains.kotlin.backend.jvm.lower
 
+//import org.jetbrains.kotlin.ir.util.createParameterDeclarations
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
-import org.jetbrains.kotlin.backend.jvm.intrinsics.receiverAndArgs
 import org.jetbrains.kotlin.codegen.*
 import org.jetbrains.kotlin.codegen.context.ClassContext
 import org.jetbrains.kotlin.codegen.context.CodegenContext
@@ -28,12 +28,9 @@ import org.jetbrains.kotlin.ir.declarations.IrFunction
 import org.jetbrains.kotlin.ir.declarations.impl.IrConstructorImpl
 import org.jetbrains.kotlin.ir.declarations.impl.IrFunctionImpl
 import org.jetbrains.kotlin.ir.expressions.IrCall
-import org.jetbrains.kotlin.ir.expressions.IrDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrMemberAccessExpression
-import org.jetbrains.kotlin.ir.expressions.impl.*
-import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
-import org.jetbrains.kotlin.ir.symbols.impl.createFunctionSymbol
-//import org.jetbrains.kotlin.ir.util.createParameterDeclarations
+import org.jetbrains.kotlin.ir.expressions.impl.IrBlockBodyImpl
+import org.jetbrains.kotlin.ir.expressions.impl.IrGetValueImpl
 import org.jetbrains.kotlin.ir.util.usesDefaultArguments
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.name.Name
@@ -280,12 +277,12 @@ class SyntheticAccessorLowering(val context: JvmBackendContext) : FileLoweringPa
             val delegateTo = call.descriptor
             delegateTo.dispatchReceiverParameter?.let {
                 call.dispatchReceiver =
-                        IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, syntheticFunction.valueParameters[offset++].symbol)
+                        IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), syntheticFunction.valueParameters[offset++].symbol)
             }
 
             delegateTo.extensionReceiverParameter?.let {
                 call.extensionReceiver =
-                        IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, syntheticFunction.valueParameters[offset++].symbol)
+                        IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), syntheticFunction.valueParameters[offset++].symbol)
             }
 
             call.descriptor.valueParameters.forEachIndexed { i, _ ->
@@ -294,6 +291,7 @@ class SyntheticAccessorLowering(val context: JvmBackendContext) : FileLoweringPa
                     IrGetValueImpl(
                         UNDEFINED_OFFSET,
                         UNDEFINED_OFFSET,
+                        TODO(),
                         syntheticFunction.valueParameters[i + offset].symbol
                     )
                 )

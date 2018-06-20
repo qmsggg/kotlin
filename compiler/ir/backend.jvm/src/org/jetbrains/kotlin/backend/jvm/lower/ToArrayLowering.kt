@@ -85,10 +85,10 @@ class ToArrayLowering(private val context: JvmBackendContext) : ClassLoweringPas
 
             irFunction.body = context.createIrBuilder(irFunction.symbol).irBlockBody {
                 +irReturn(
-                    irCall(IrSimpleFunctionSymbolImpl(toArrayUtilDescriptor)).apply {
+                    irCall(IrSimpleFunctionSymbolImpl(toArrayUtilDescriptor), TODO()).apply {
                         putValueArgument(
                             0,
-                            IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irFunction.dispatchReceiverParameter!!.symbol)
+                            IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), irFunction.dispatchReceiverParameter!!.symbol)
                         )
                     })
             }
@@ -143,12 +143,12 @@ class ToArrayLowering(private val context: JvmBackendContext) : ClassLoweringPas
 
             irFunction.body = context.createIrBuilder(irFunction.symbol).irBlockBody {
                 +irReturn(
-                    irCall(IrSimpleFunctionSymbolImpl(toArrayUtilDescriptor)).apply {
+                    irCall(IrSimpleFunctionSymbolImpl(toArrayUtilDescriptor), TODO()).apply {
                         putValueArgument(
                             0,
-                            IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irFunction.dispatchReceiverParameter!!.symbol)
+                            IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), irFunction.dispatchReceiverParameter!!.symbol)
                         )
-                        putValueArgument(1, IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, irFunction.valueParameters[0].symbol))
+                        putValueArgument(1, IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, TODO(), irFunction.valueParameters[0].symbol))
                     })
             }
 

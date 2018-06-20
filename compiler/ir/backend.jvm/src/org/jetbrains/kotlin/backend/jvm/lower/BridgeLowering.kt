@@ -258,6 +258,7 @@ class BridgeLowering(val context: JvmBackendContext) : ClassLoweringPass {
                 IrGetValueImpl(
                     UNDEFINED_OFFSET,
                     UNDEFINED_OFFSET,
+                    TODO(),
                     bridgeFunction.valueParameters[i].symbol,
                     JvmLoweredStatementOrigin.BRIDGE_DELEGATION
                 )
