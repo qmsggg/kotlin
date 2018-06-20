@@ -50,6 +50,7 @@ import org.jetbrains.kotlin.idea.imports.importableFqName
 import org.jetbrains.kotlin.idea.quickfix.RemoveUnusedFunctionParameterFix
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.references.resolveMainReferenceToDescriptors
+import org.jetbrains.kotlin.idea.search.ideaExtensions.KotlinReferencesSearchParameters
 import org.jetbrains.kotlin.idea.search.isCheapEnoughToSearchConsideringOperators
 import org.jetbrains.kotlin.idea.search.usagesSearch.dataClassComponentFunction
 import org.jetbrains.kotlin.idea.search.usagesSearch.getAccessorNames
@@ -221,7 +222,6 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
                 hasReferences(declaration, descriptor, restrictedScope) ||
                 hasOverrides(declaration, restrictedScope) ||
                 hasFakeOverrides(declaration, restrictedScope) ||
-                isPlatformImplementation(declaration) ||
                 hasPlatformImplementations(declaration, descriptor)
     }
 
@@ -267,7 +267,8 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
             return false
         }
 
-        val referenceUsed: Boolean by lazy { !ReferencesSearch.search(declaration, useScope).forEach(::checkReference) }
+        val searchParameters = KotlinReferencesSearchParameters(declaration, useScope)
+        val referenceUsed: Boolean by lazy { !ReferencesSearch.search(searchParameters).forEach(::checkReference) }
 
         if (descriptor is FunctionDescriptor &&
             DescriptorUtils.getAnnotationByFqName(descriptor.annotations, JvmFileClassUtil.JVM_NAME) != null
@@ -278,9 +279,11 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
         if (declaration is KtCallableDeclaration && !declaration.hasModifier(KtTokens.INTERNAL_KEYWORD)) {
             val lightMethods = declaration.toLightMethods()
             if (lightMethods.isNotEmpty()) {
-                return lightMethods.any { method ->
+                val lightMethodsUsed = lightMethods.any { method ->
                     !MethodReferencesSearch.search(method).forEach(::checkReference)
                 }
+                if (lightMethodsUsed) return true
+                if (!declaration.hasActualModifier()) return false
             }
         }
 
@@ -318,9 +321,6 @@ class UnusedSymbolInspection : AbstractKotlinInspection() {
             }
         }
     }
-
-    private fun isPlatformImplementation(declaration: KtNamedDeclaration) =
-        declaration.hasActualModifier()
 
     private fun hasPlatformImplementations(declaration: KtNamedDeclaration, descriptor: DeclarationDescriptor?): Boolean {
         if (!declaration.hasExpectModifier()) return false
