@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.idea.inspections.collections
 import com.intellij.codeInspection.IntentionWrapper
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.util.TextRange
+import org.jetbrains.kotlin.idea.inspections.collections.AbstractUselessCallInspection.Companion.Conversion
 import org.jetbrains.kotlin.idea.quickfix.ReplaceWithDotCallFix
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
