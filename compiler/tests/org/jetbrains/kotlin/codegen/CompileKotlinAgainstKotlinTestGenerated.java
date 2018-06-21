@@ -106,6 +106,11 @@ public class CompileKotlinAgainstKotlinTestGenerated extends AbstractCompileKotl
         runTest("compiler/testData/compileKotlinAgainstKotlin/defaultLambdaRegeneration2.kt");
     }
 
+    @TestMetadata("deserializeAbbreviatedTypeForInnerTypeAlias.kt")
+    public void testDeserializeAbbreviatedTypeForInnerTypeAlias() throws Exception {
+        runTest("compiler/testData/compileKotlinAgainstKotlin/deserializeAbbreviatedTypeForInnerTypeAlias.kt");
+    }
+
     @TestMetadata("doublyNestedClass.kt")
     public void testDoublyNestedClass() throws Exception {
         runTest("compiler/testData/compileKotlinAgainstKotlin/doublyNestedClass.kt");
