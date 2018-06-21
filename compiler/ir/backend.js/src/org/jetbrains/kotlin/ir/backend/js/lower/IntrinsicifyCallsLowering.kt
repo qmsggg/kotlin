@@ -19,10 +19,12 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.copyTypeArgumentsFrom
 import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.impl.originalKotlinType
+import org.jetbrains.kotlin.ir.types.toKotlinType
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformerVoid
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.SimpleType
 
 class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileLoweringPass {
@@ -33,6 +35,7 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
     private val symbolToIrFunction: Map<IrFunctionSymbol, IrSimpleFunction>
     private val nameToIrTransformer: Map<Name, (IrCall) -> IrCall>
 
+    /// TODO replace with IrTypes'
     val kCallable = context.builtIns.getBuiltInClassByFqName(KotlinBuiltIns.FQ_NAMES.kCallable.toSafe())
     val kProperty = context.builtIns.getBuiltInClassByFqName(KotlinBuiltIns.FQ_NAMES.kProperty.asSingleFqName())
 
@@ -42,7 +45,7 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
         memberToTransformer = mutableMapOf()
         nameToIrTransformer = mutableMapOf()
 
-        val primitiveNumbers = context.irBuiltIns.run { listOf(int, short, byte, float, double) }
+        val primitiveNumbers = context.irBuiltIns.run { listOf(intType, shortType, byteType, floatType, doubleType) }
 
         memberToIrFunction.run {
             for (type in primitiveNumbers) {
@@ -57,11 +60,11 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
                 op(type, OperatorNames.REM, context.intrinsics.jsMod)
             }
 
-            context.irBuiltIns.string.let {
+            context.irBuiltIns.stringType.let {
                 op(it, OperatorNames.ADD, context.intrinsics.jsPlus)
             }
 
-            context.irBuiltIns.int.let {
+            context.irBuiltIns.intType.let {
                 op(it, OperatorNames.SHL, context.intrinsics.jsBitShiftL)
                 op(it, OperatorNames.SHR, context.intrinsics.jsBitShiftR)
                 op(it, OperatorNames.SHRU, context.intrinsics.jsBitShiftRU)
@@ -71,7 +74,7 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
                 op(it, OperatorNames.INV, context.intrinsics.jsBitNot)
             }
 
-            context.irBuiltIns.bool.let {
+            context.irBuiltIns.booleanType.let {
                 op(it, OperatorNames.AND, context.intrinsics.jsBitAnd)
                 op(it, OperatorNames.OR, context.intrinsics.jsBitOr)
                 op(it, OperatorNames.NOT, context.intrinsics.jsNot)
@@ -99,12 +102,12 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
                 // TODO: use increment and decrement when it's possible
                 op(type, OperatorNames.INC) {
                     irCall(it, context.intrinsics.jsPlus.symbol, dispatchReceiverAsFirstArgument = true).apply {
-                        putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.int, 1))
+                        putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, 1))
                     }
                 }
                 op(type, OperatorNames.DEC) {
                     irCall(it, context.intrinsics.jsMinus.symbol, dispatchReceiverAsFirstArgument = true).apply {
-                        putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.int, 1))
+                        putValueArgument(1, JsIrBuilder.buildInt(context.irBuiltIns.intType, 1))
                     }
                 }
             }
@@ -113,18 +116,18 @@ class IntrinsicifyCallsLowering(private val context: JsIrBackendContext) : FileL
         nameToIrTransformer.run {
             addWithPredicate(
                 Name.special(Namer.KCALLABLE_GET_NAME),
-                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type, kCallable) } ?: false },
+                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type.toKotlinType(), kCallable) } ?: false },
                 { call -> irCall(call, context.intrinsics.jsName.symbol, dispatchReceiverAsFirstArgument = true) })
 
             addWithPredicate(
                 Name.identifier(Namer.KPROPERTY_GET),
-                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type, kProperty) } ?: false },
+                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type.toKotlinType(), kProperty) } ?: false },
                 { call -> irCall(call, context.intrinsics.jsPropertyGet.symbol, dispatchReceiverAsFirstArgument = true)}
             )
 
             addWithPredicate(
                 Name.identifier(Namer.KPROPERTY_SET),
-                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type, kProperty) } ?: false},
+                { call -> call.symbol.owner.dispatchReceiverParameter?.run { DescriptorUtils.isSubtypeOfClass(type.toKotlinType(), kProperty) } ?: false},
                 { call -> irCall(call, context.intrinsics.jsPropertySet.symbol, dispatchReceiverAsFirstArgument = true)}
             )
         }
@@ -207,12 +210,12 @@ private fun IrCall.copyTypeAndValueArgumentsFrom(call: IrCall, dispatchReceiverA
     }
 }
 
-private fun <V> MutableMap<SimpleMemberKey, V>.op(type: KotlinType, name: Name, v: V) {
+private fun <V> MutableMap<SimpleMemberKey, V>.op(type: IrType, name: Name, v: V) {
     put(SimpleMemberKey(type, name), v)
 }
 
 // TODO issue: marked as unused, but used; rename works wrongly.
-private fun <V> MutableMap<SimpleMemberKey, V>.op(type: KotlinType, name: String, v: V) {
+private fun <V> MutableMap<SimpleMemberKey, V>.op(type: IrType, name: String, v: V) {
     put(SimpleMemberKey(type, Name.identifier(name)), v)
 }
 
@@ -232,4 +235,22 @@ private fun <K> MutableMap<K, (IrCall) -> IrCall>.addWithPredicate(from: K, pred
 
 private inline fun <T> select(crossinline predicate: () -> Boolean, crossinline ifTrue: () -> T, crossinline ifFalse: () -> T): T = if (predicate()) ifTrue() else ifFalse()
 
-private data class SimpleMemberKey(val klass: KotlinType, val name: Name)
+private class SimpleMemberKey(val klass: IrType, val name: Name) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SimpleMemberKey
+
+        if (name != other.name) return false
+        if (klass.originalKotlinType != other.klass.originalKotlinType) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = klass.originalKotlinType?.hashCode() ?: 0
+        result = 31 * result + name.hashCode()
+        return result
+    }
+}

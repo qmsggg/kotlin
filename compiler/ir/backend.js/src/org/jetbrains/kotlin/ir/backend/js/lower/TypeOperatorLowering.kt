@@ -21,20 +21,22 @@ import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
 import org.jetbrains.kotlin.ir.expressions.IrTypeOperatorCall
 import org.jetbrains.kotlin.ir.expressions.impl.IrCompositeImpl
+import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
-import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.types.isNullable
-import org.jetbrains.kotlin.types.typeUtil.*
+import org.jetbrains.kotlin.types.typeUtil.isInterface
+import org.jetbrains.kotlin.types.typeUtil.isTypeParameter
+import org.jetbrains.kotlin.types.typeUtil.makeNotNullable
 
 class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    private val unit = context.builtIns.unit
-    private val unitValue = JsIrBuilder.buildGetObjectValue(unit.defaultType, context.symbolTable.referenceClass(unit))
+    private val unit = context.irBuiltIns.unitType
+    private val unitValue = JsIrBuilder.buildGetObjectValue(unit, unit.classifierOrFail as IrClassSymbol)
 
-    private val lit24 = JsIrBuilder.buildInt(context.builtIns.intType, 24)
-    private val lit16 = JsIrBuilder.buildInt(context.builtIns.intType, 16)
+    private val lit24 = JsIrBuilder.buildInt(context.irBuiltIns.intType, 24)
+    private val lit16 = JsIrBuilder.buildInt(context.irBuiltIns.intType, 16)
 
-    private val byteMask = JsIrBuilder.buildInt(context.builtIns.intType, 0xFF)
-    private val shortMask = JsIrBuilder.buildInt(context.builtIns.intType, 0xFFFF)
+    private val byteMask = JsIrBuilder.buildInt(context.irBuiltIns.intType, 0xFF)
+    private val shortMask = JsIrBuilder.buildInt(context.irBuiltIns.intType, 0xFFFF)
 
     private val calculator = JsIrArithBuilder(context)
 
@@ -53,13 +55,13 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
     private val typeOfIntrinsicSymbol = context.intrinsics.jsTypeOf.symbol
     private val toJSTypeIntrinsicSymbol = context.intrinsics.jsToJsType.symbol
 
-    private val stringMarker = JsIrBuilder.buildString(context.irBuiltIns.string, "string")
-    private val booleanMarker = JsIrBuilder.buildString(context.irBuiltIns.string, "boolean")
-    private val functionMarker = JsIrBuilder.buildString(context.irBuiltIns.string, "function")
-    private val numberMarker = JsIrBuilder.buildString(context.irBuiltIns.string, "number")
+    private val stringMarker = JsIrBuilder.buildString(context.irBuiltIns.stringType, "string")
+    private val booleanMarker = JsIrBuilder.buildString(context.irBuiltIns.stringType, "boolean")
+    private val functionMarker = JsIrBuilder.buildString(context.irBuiltIns.stringType, "function")
+    private val numberMarker = JsIrBuilder.buildString(context.irBuiltIns.stringType, "number")
 
-    private val litTrue: IrExpression = JsIrBuilder.buildBoolean(context.irBuiltIns.bool, true)
-    private val litNull: IrExpression = JsIrBuilder.buildNull(context.builtIns.nullableNothingType)
+    private val litTrue: IrExpression = JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, true)
+    private val litNull: IrExpression = JsIrBuilder.buildNull(context.irBuiltIns.nothingNType)
 
     private fun getInternalFunction(name: String) = context.symbolTable.referenceSimpleFunction(context.getInternalFunctions(name).single())
 
@@ -126,16 +128,21 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
             }
 
             // Note: native `instanceOf` is not used which is important because of null-behaviour
-            private fun advancedCheckRequired(type: KotlinType) = type.isInterface() ||
-                    KotlinBuiltIns.isArray(type) ||
-                    KotlinBuiltIns.isPrimitiveArray(type) ||
+            private fun advancedCheckRequired(type: IrType) = type.toKotlinType().isInterface() ||
+                    type.isArray() ||
+                    KotlinBuiltIns.isPrimitiveArray(type.toKotlinType()) ||
                     isTypeOfCheckingType(type)
 
-            private fun isTypeOfCheckingType(type: KotlinType) =
-                ((type.isPrimitiveNumberType() || KotlinBuiltIns.isNumber(type)) && !type.isLong() && !type.isChar()) ||
+            private fun isTypeOfCheckingType(type: IrType) =
+                type.isByte() ||
+                        type.isShort() ||
+                        type.isInt() ||
+                        type.isFloat() ||
+                        type.isDouble() ||
+                        type.isNumber() ||
                         type.isBoolean() ||
-                        type.isFunctionOrKFunctionType ||
-                        KotlinBuiltIns.isString(type)
+                        type.toKotlinType().isFunctionOrKFunctionType ||
+                        type.isString()
 
             fun lowerInstanceOf(
                 expression: IrTypeOperatorCall,
@@ -146,7 +153,7 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 assert((expression.operator == IrTypeOperator.NOT_INSTANCEOF) == inverted)
 
                 val toType = expression.typeOperand
-                val isCopyRequired = expression.argument.type.isNullable() && advancedCheckRequired(toType.makeNotNullable())
+                val isCopyRequired = expression.argument.type.isNullable() && advancedCheckRequired(toType.makeNotNull())
                 val newStatements = mutableListOf<IrStatement>()
 
                 val argument =
@@ -167,12 +174,12 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
 
             private fun cacheValue(value: IrExpression, newStatements: MutableList<IrStatement>, cd: DeclarationDescriptor): IrExpression {
                 val varSymbol = JsSymbolBuilder.buildTempVar(cd, value.type, mutable = false)
-                newStatements += JsIrBuilder.buildVar(varSymbol, value)
+                newStatements += JsIrBuilder.buildVar(varSymbol, value, value.type)
                 return JsIrBuilder.buildGetValue(varSymbol)
             }
 
-            private fun generateTypeCheck(argument: IrExpression, toType: KotlinType): IrExpression {
-                val toNotNullable = toType.makeNotNullable()
+            private fun generateTypeCheck(argument: IrExpression, toType: IrType): IrExpression {
+                val toNotNullable = toType.makeNotNull()
                 val instanceCheck = generateTypeCheckNonNull(argument, toNotNullable)
                 val isFromNullable = argument.type.isNullable()
                 val isToNullable = toType.isNullable()
@@ -190,16 +197,16 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 }
             }
 
-            private fun generateTypeCheckNonNull(argument: IrExpression, toType: KotlinType): IrExpression {
-                assert(!toType.isMarkedNullable)
+            private fun generateTypeCheckNonNull(argument: IrExpression, toType: IrType): IrExpression {
+                assert(!toType.isMarkedNullable()) //???
                 return when {
-                    KotlinBuiltIns.isAny(toType) -> generateIsObjectCheck(argument)
+                    toType.isAny() -> generateIsObjectCheck(argument)
                     isTypeOfCheckingType(toType) -> generateTypeOfCheck(argument, toType)
                     toType.isChar() -> generateCheckForChar(argument)
-                    KotlinBuiltIns.isArray(toType) -> generateGenericArrayCheck(argument)
-                    KotlinBuiltIns.isPrimitiveArray(toType) -> generatePrimitiveArrayTypeCheck(argument, toType)
-                    toType.isTypeParameter() -> generateTypeCheckWithTypeParameter(argument, toType)
-                    toType.isInterface() -> generateInterfaceCheck(argument, toType)
+                    KotlinBuiltIns.isArray(toType.toKotlinType()) -> generateGenericArrayCheck(argument)
+                    KotlinBuiltIns.isPrimitiveArray(toType.toKotlinType()) -> generatePrimitiveArrayTypeCheck(argument, toType)
+                    toType.toKotlinType().isTypeParameter() -> generateTypeCheckWithTypeParameter(argument, toType)
+                    toType.toKotlinType().isInterface() -> generateInterfaceCheck(argument, toType)
                     else -> generateNativeInstanceOf(argument, toType)
                 }
             }
@@ -208,12 +215,12 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 putValueArgument(0, argument)
             }
 
-            private fun generateTypeCheckWithTypeParameter(argument: IrExpression, toType: KotlinType): IrExpression {
-                val typeParameterDescriptor = toType.constructor.declarationDescriptor as TypeParameterDescriptor
-                assert(!typeParameterDescriptor.isReified) { "reified parameters have to be lowered before" }
+            private fun generateTypeCheckWithTypeParameter(argument: IrExpression, toType: IrType): IrExpression {
+                val typeParameterDescriptor = toType.toKotlinType().constructor.declarationDescriptor as TypeParameterDescriptor
+//                assert(!typeParameterDescriptor.isReified) { "reified parameters have to be lowered before" }
 
                 return typeParameterDescriptor.upperBounds.fold(litTrue) { r, t ->
-                    val check = generateTypeCheckNonNull(argument, t.makeNotNullable())
+                    val check = generateTypeCheckNonNull(argument, t.makeNotNullable().toIrType()!!)
                     calculator.and(r, check)
                 }
             }
@@ -221,11 +228,11 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
             private fun generateCheckForChar(argument: IrExpression) =
                 JsIrBuilder.buildCall(isCharSymbol).apply { dispatchReceiver = argument }
 
-            private fun generateTypeOfCheck(argument: IrExpression, toType: KotlinType): IrExpression {
+            private fun generateTypeOfCheck(argument: IrExpression, toType: IrType): IrExpression {
                 val marker = when {
-                    toType.isFunctionOrKFunctionType -> functionMarker
+                    toType.toKotlinType().isFunctionOrKFunctionType -> functionMarker
                     toType.isBoolean() -> booleanMarker
-                    KotlinBuiltIns.isString(toType) -> stringMarker
+                    toType.isString() -> stringMarker
                     else -> numberMarker
                 }
 
@@ -236,17 +243,17 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 }
             }
 
-            private fun wrapTypeReference(toType: KotlinType) =
-                JsIrBuilder.buildCall(toJSTypeIntrinsicSymbol).apply { putTypeArgument(0, toType) }
+            private fun wrapTypeReference(toType: IrType) =
+                JsIrBuilder.buildCall0(toJSTypeIntrinsicSymbol).apply { putTypeArgument(0, toType) }
 
             private fun generateGenericArrayCheck(argument: IrExpression) =
                 JsIrBuilder.buildCall(isArraySymbol).apply { putValueArgument(0, argument) }
 
-            private fun generatePrimitiveArrayTypeCheck(argument: IrExpression, toType: KotlinType): IrExpression {
+            private fun generatePrimitiveArrayTypeCheck(argument: IrExpression, toType: IrType): IrExpression {
                 TODO("Implement Typed Array check")
             }
 
-            private fun generateInterfaceCheck(argument: IrExpression, toType: KotlinType): IrExpression {
+            private fun generateInterfaceCheck(argument: IrExpression, toType: IrType): IrExpression {
                 val irType = wrapTypeReference(toType)
                 return JsIrBuilder.buildCall(isInterfaceSymbol).apply {
                     putValueArgument(0, argument)
@@ -254,7 +261,7 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                 }
             }
 
-            private fun generateNativeInstanceOf(argument: IrExpression, toType: KotlinType): IrExpression {
+            private fun generateNativeInstanceOf(argument: IrExpression, toType: IrType): IrExpression {
                 val irType = wrapTypeReference(toType)
                 return JsIrBuilder.buildCall(instanceOfIntrinsicSymbol).apply {
                     putValueArgument(0, argument)
@@ -264,12 +271,12 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
 
             private fun lowerCoercionToUnit(expression: IrTypeOperatorCall): IrExpression {
                 assert(expression.operator === IrTypeOperator.IMPLICIT_COERCION_TO_UNIT)
-                return expression.run { IrCompositeImpl(startOffset, endOffset, unit.defaultType, null, listOf(argument, unitValue)) }
+                return expression.run { IrCompositeImpl(startOffset, endOffset, unit, null, listOf(argument, unitValue)) }
             }
 
             private fun lowerIntegerCoercion(expression: IrTypeOperatorCall, containingDeclaration: DeclarationDescriptor): IrExpression {
                 assert(expression.operator === IrTypeOperator.IMPLICIT_INTEGER_COERCION)
-                assert(KotlinBuiltIns.isInt(expression.argument.type))
+                assert(expression.argument.type.isInt())
 
                 val isNullable = expression.argument.type.isNullable()
                 val toType = expression.typeOperand
@@ -284,9 +291,9 @@ class TypeOperatorLowering(val context: JsIrBackendContext) : FileLoweringPass {
                     if (isNullable) cacheValue(expression.argument, newStatements, containingDeclaration) else expression.argument
 
                 val casted = when {
-                    KotlinBuiltIns.isByte(toType) -> maskOp(argument, byteMask, lit24)
-                    KotlinBuiltIns.isShort(toType) -> maskOp(argument, shortMask, lit16)
-                    KotlinBuiltIns.isLong(toType) -> TODO("Long coercion")
+                    toType.isByte() -> maskOp(argument, byteMask, lit24)
+                    toType.isShort() -> maskOp(argument, shortMask, lit16)
+                    toType.isLong() -> TODO("Long coercion")
                     else -> error("Unreachable execution (coercion to non-Integer type")
                 }
 

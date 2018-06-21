@@ -18,9 +18,9 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrCatchImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrElseBranchImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrTryImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
+import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.visitors.IrElementTransformer
 import org.jetbrains.kotlin.types.CommonSupertypes
-import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.isDynamic
 import org.jetbrains.kotlin.types.typeUtil.isSubtypeOf
 
@@ -49,9 +49,9 @@ import org.jetbrains.kotlin.types.typeUtil.isSubtypeOf
  */
 
 class MultipleCatchesLowering(val context: JsIrBackendContext) : FileLoweringPass {
-    val litTrue = JsIrBuilder.buildBoolean(context.irBuiltIns.bool, true)
-    val unitType = context.irBuiltIns.unit
-    val nothingType = context.irBuiltIns.nothing
+    val litTrue = JsIrBuilder.buildBoolean(context.irBuiltIns.booleanType, true)
+    val unitType = context.irBuiltIns.unitType
+    val nothingType = context.irBuiltIns.nothingType
 
     override fun lower(irFile: IrFile) {
         irFile.transformChildren(object : IrElementTransformer<IrDeclaration?> {
@@ -66,8 +66,9 @@ class MultipleCatchesLowering(val context: JsIrBackendContext) : FileLoweringPas
 
                 val commonType = mergeTypes(aTry.catches.map { it.catchParameter.type })
 
-                val pendingExceptionSymbol = JsSymbolBuilder.buildVar(data!!.descriptor, commonType, "\$pending\$", false)
-                val pendingExceptionDeclaration = JsIrBuilder.buildVar(pendingExceptionSymbol)
+                val pendingExceptionType = commonType.toIrType()!!
+                val pendingExceptionSymbol = JsSymbolBuilder.buildVar(data!!.descriptor, pendingExceptionType, "\$pending\$", false)
+                val pendingExceptionDeclaration = JsIrBuilder.buildVar(pendingExceptionSymbol, type = pendingExceptionType)
                 val pendingException = JsIrBuilder.buildGetValue(pendingExceptionSymbol)
 
                 val branches = mutableListOf<IrBranch>()
@@ -75,18 +76,18 @@ class MultipleCatchesLowering(val context: JsIrBackendContext) : FileLoweringPas
                 for (catch in aTry.catches) {
                     assert(!catch.catchParameter.isVar) { "caught exception parameter has to immutable" }
                     val type = catch.catchParameter.type
-                    val typeSymbol = context.symbolTable.referenceClassifier(type.constructor.declarationDescriptor!!)
-                    val castedPendingException = buildImplicitCast(pendingException, type, typeSymbol)
+                    val typeSymbol = type.classifierOrNull
                     val catchBody = catch.result.transform(object : IrElementTransformer<VariableDescriptor> {
                         override fun visitGetValue(expression: IrGetValue, data: VariableDescriptor) =
-                            if (expression.descriptor == data) castedPendingException else expression
+                            // TODO does it generate cast for each access?
+                            if (typeSymbol != null && expression.descriptor == data) buildImplicitCast(pendingException, type, typeSymbol) else expression
                     }, catch.parameter)
 
-                    if (type.isDynamic()) {
+                    if (type is IrDynamicType) {
                         branches += IrElseBranchImpl(catch.startOffset, catch.endOffset, litTrue, catchBody)
                         break
                     } else {
-                        val typeCheck = buildIsCheck(pendingException, type, typeSymbol)
+                        val typeCheck = buildIsCheck(pendingException, type, typeSymbol!!)
                         branches += IrBranchImpl(catch.startOffset, catch.endOffset, typeCheck, catchBody)
                     }
                 }
@@ -106,14 +107,14 @@ class MultipleCatchesLowering(val context: JsIrBackendContext) : FileLoweringPas
                 return aTry.run { IrTryImpl(startOffset, endOffset, type, tryResult, listOf(newCatch), finallyExpression) }
             }
 
-            private fun buildIsCheck(value: IrExpression, toType: KotlinType, toTypeSymbol: IrClassifierSymbol) =
-                JsIrBuilder.buildTypeOperator(context.irBuiltIns.bool, IrTypeOperator.INSTANCEOF, value, toType, toTypeSymbol)
+            private fun buildIsCheck(value: IrExpression, toType: IrType, toTypeSymbol: IrClassifierSymbol) =
+                JsIrBuilder.buildTypeOperator(context.irBuiltIns.booleanType, IrTypeOperator.INSTANCEOF, value, toType, toTypeSymbol)
 
-            private fun buildImplicitCast(value: IrExpression, toType: KotlinType, toTypeSymbol: IrClassifierSymbol) =
+            private fun buildImplicitCast(value: IrExpression, toType: IrType, toTypeSymbol: IrClassifierSymbol) =
                 JsIrBuilder.buildTypeOperator(toType, IrTypeOperator.IMPLICIT_CAST, value, toType, toTypeSymbol)
 
-            private fun mergeTypes(types: List<KotlinType>) = CommonSupertypes.commonSupertype(types).also {
-                assert(it.isSubtypeOf(context.builtIns.throwable.defaultType) || it.isDynamic())
+            private fun mergeTypes(types: List<IrType>) = CommonSupertypes.commonSupertype(types.map(IrType::toKotlinType)).also {
+                assert(it.isSubtypeOf(context.builtIns.throwable.defaultType) || it.toIrType() is IrDynamicType)
             }
 
         }, null)

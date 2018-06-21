@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrFunctionAccessExpression
 import org.jetbrains.kotlin.ir.expressions.getTypeArgumentOrDefault
+import org.jetbrains.kotlin.ir.types.toKotlinType
 import org.jetbrains.kotlin.ir.util.SymbolTable
 import org.jetbrains.kotlin.ir.visitors.IrElementVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -50,17 +51,18 @@ fun IrModuleFragment.referenceAllTypeExternalClassifiers(symbolTable: SymbolTabl
 
         override fun visitValueParameter(declaration: IrValueParameter) {
             super.visitValueParameter(declaration)
-            declaration.type.referenceAllClassifiers()
+            ///
+            declaration.type.toKotlinType().referenceAllClassifiers()
         }
 
         override fun visitVariable(declaration: IrVariable) {
             super.visitVariable(declaration)
-            declaration.type.referenceAllClassifiers()
+            declaration.type.toKotlinType().referenceAllClassifiers()
         }
 
         override fun visitExpression(expression: IrExpression) {
             super.visitExpression(expression)
-            expression.type.referenceAllClassifiers()
+            expression.type.toKotlinType().referenceAllClassifiers()
         }
 
         override fun visitDeclaration(declaration: IrDeclaration) {
@@ -108,7 +110,7 @@ fun IrModuleFragment.referenceAllTypeExternalClassifiers(symbolTable: SymbolTabl
 
         override fun visitFunction(declaration: IrFunction) {
             super.visitFunction(declaration)
-            declaration.returnType.referenceAllClassifiers()
+            declaration.returnType.toKotlinType().referenceAllClassifiers()
         }
 
         override fun visitFunctionAccess(expression: IrFunctionAccessExpression) {
