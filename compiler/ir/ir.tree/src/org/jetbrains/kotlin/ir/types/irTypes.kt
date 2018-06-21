@@ -6,9 +6,12 @@
 package org.jetbrains.kotlin.ir.types
 
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
+import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
 import org.jetbrains.kotlin.ir.symbols.IrClassifierSymbol
-import org.jetbrains.kotlin.ir.types.impl.IrSimpleTypeImpl
-import org.jetbrains.kotlin.ir.types.impl.originalKotlinType
+import org.jetbrains.kotlin.ir.symbols.impl.IrClassSymbolImpl
+import org.jetbrains.kotlin.ir.symbols.impl.IrTypeParameterSymbolImpl
+import org.jetbrains.kotlin.ir.types.impl.*
 import org.jetbrains.kotlin.types.*
 import org.jetbrains.kotlin.utils.addToStdlib.cast
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
@@ -55,18 +58,53 @@ fun IrType.makeNullable() =
     else
         this
 
-fun IrType.toKotlinType(): KotlinType = when (this) {
-    is IrSimpleType -> {
-        val classifier = this.classifier.descriptor
-        val arguments = this.arguments.mapIndexed { index, it ->
-            when (it) {
-                is IrTypeProjection -> TypeProjectionImpl(it.variance, it.type.toKotlinType())
-                is IrStarProjection -> StarProjectionImpl((classifier as ClassDescriptor).declaredTypeParameters[index])
-                else -> error(it)
-            }
-        }
-
-        classifier.defaultType.replace(newArguments = arguments).makeNullableAsSpecified(this.hasQuestionMark)
+fun IrType.toKotlinType(): KotlinType {
+    originalKotlinType?.let {
+        return it
     }
-    else -> TODO(this.toString())
+
+    return when (this) {
+        is IrSimpleType -> {
+            val classifier = classifier.descriptor
+            val arguments = arguments.mapIndexed { index, it ->
+                when (it) {
+                    is IrTypeProjection -> TypeProjectionImpl(it.variance, it.type.toKotlinType())
+                    is IrStarProjection -> StarProjectionImpl((classifier as ClassDescriptor).declaredTypeParameters[index])
+                    else -> error(it)
+                }
+            }
+
+            classifier.defaultType.replace(newArguments = arguments).makeNullableAsSpecified(hasQuestionMark)
+        }
+        else -> TODO(toString())
+    }
+}
+
+fun ClassifierDescriptor.toIrType(hasQuestionMark: Boolean = false): IrType {
+    val symbol = getSymbol()
+    return IrSimpleTypeImpl(defaultType, symbol, hasQuestionMark, listOf(), listOf())
+}
+
+fun KotlinType.toIrType(): IrType? {
+    if (isDynamic()) return IrDynamicTypeImpl(this, listOf(), Variance.INVARIANT)
+
+    val symbol = constructor.declarationDescriptor?.getSymbol() ?: return null
+
+    val arguments = this.arguments.mapIndexed { i, projection ->
+        when (projection) {
+            is TypeProjectionImpl -> IrTypeProjectionImpl(projection.type.toIrType()!!, projection.projectionKind)
+            is StarProjectionImpl -> IrStarProjectionImpl
+            else -> error(projection)
+        }
+    }
+
+    // TODO
+    val annotations = listOf()
+    return IrSimpleTypeImpl(this, symbol, isMarkedNullable, arguments, annotations)
+}
+
+private fun ClassifierDescriptor.getSymbol(): IrClassifierSymbol = when (this) {
+    is ClassDescriptor -> IrClassSymbolImpl(this)
+    is TypeParameterDescriptor -> IrTypeParameterSymbolImpl(this)
+    else -> TODO()
 }

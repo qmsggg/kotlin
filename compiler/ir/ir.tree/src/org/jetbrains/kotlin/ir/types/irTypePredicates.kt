@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.name.FqNameUnsafe
 import org.jetbrains.kotlin.resolve.DescriptorUtils.getFqName
+import org.jetbrains.kotlin.types.isNullable
 
 private fun IrType.isBuiltInClassType(descriptorPredicate: (ClassDescriptor) -> Boolean, hasQuestionMark: Boolean): Boolean {
     if (this !is IrSimpleType) return false
@@ -31,6 +32,7 @@ private fun IrType.isClassType(fqName: FqNameUnsafe, hasQuestionMark: Boolean): 
 private fun classFqNameEquals(descriptor: ClassDescriptor, fqName: FqNameUnsafe): Boolean =
     descriptor.name == fqName.shortName() && fqName == getFqName(descriptor)
 
+fun IrType.isAny(): Boolean = isBuiltInClassType(KotlinBuiltIns::isAny, hasQuestionMark = false)
 fun IrType.isNullableAny(): Boolean = isBuiltInClassType(KotlinBuiltIns::isAny, hasQuestionMark = true)
 
 fun IrType.isString(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES.string)
@@ -41,6 +43,9 @@ fun IrType.isPrimitiveType(): Boolean =
 
 fun IrType.isNullablePrimitiveType(): Boolean =
     isBuiltInClassType(KotlinBuiltIns::isPrimitiveClass, hasQuestionMark = true)
+
+fun IrType.isMarkedNullable() = (this as? IrSimpleType)?.hasQuestionMark ?: false
+fun IrType.isNullable() = toKotlinType().isNullable()
 
 fun IrType.isUnit() = isNotNullClassType(KotlinBuiltIns.FQ_NAMES.unit)
 fun IrType.isNullableUnit() = isNullableClassType(KotlinBuiltIns.FQ_NAMES.unit)
@@ -54,3 +59,4 @@ fun IrType.isInt(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES._int)
 fun IrType.isLong(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES._long)
 fun IrType.isFloat(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES._float)
 fun IrType.isDouble(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES._double)
+fun IrType.isNumber(): Boolean = isNotNullClassType(KotlinBuiltIns.FQ_NAMES.number)
