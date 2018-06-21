@@ -1,3 +1,4 @@
+// IGNORE_BACKEND: JS_IR
 // !LANGUAGE: +NewInference
 
 class Recursive<T : Recursive<T>> : Generic<PlaceHolder<T>>, MainSupertype
