@@ -31,6 +31,7 @@ import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsExpression
 import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
+import org.jetbrains.kotlin.resolve.checkers.ExpectedActualDeclarationChecker
 import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 import org.jetbrains.kotlin.types.KotlinType
 
@@ -168,8 +169,19 @@ object CodegenUtil {
     }
 
     @JvmStatic
-    fun getActualDeclarations(file: KtFile): List<KtDeclaration> =
-            file.declarations.filterNot(KtDeclaration::hasExpectModifier)
+    fun getActualDeclarations(file: KtFile, bindingContext: BindingContext): List<KtDeclaration> =
+        file.declarations.filter(fun(declaration: KtDeclaration): Boolean {
+            if (!declaration.hasExpectModifier()) return true
+
+            if (declaration is KtClass) {
+                val descriptor = bindingContext.get(BindingContext.CLASS, declaration)
+                if (descriptor != null && ExpectedActualDeclarationChecker.shouldGenerateExpectClass(descriptor)) {
+                    return true
+                }
+            }
+
+            return false
+        })
 
     @JvmStatic
     fun findExpectedFunctionForActual(descriptor: FunctionDescriptor): FunctionDescriptor? {

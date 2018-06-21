@@ -132,7 +132,7 @@ class MultifileClassPartCodegen(
     }
 
     override fun generateBody() {
-        for (declaration in CodegenUtil.getActualDeclarations(element)) {
+        for (declaration in CodegenUtil.getActualDeclarations(element, state.bindingContext)) {
             if (declaration is KtNamedFunction || declaration is KtProperty || declaration is KtTypeAlias) {
                 genSimpleMember(declaration)
             }

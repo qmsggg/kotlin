@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.kotlin.backend.common.CodegenUtil;
 import org.jetbrains.kotlin.fileClasses.JvmFileClassUtil;
 import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.resolve.BindingContext;
 import org.jetbrains.kotlin.test.InTextDirectivesUtils;
 import org.jetbrains.kotlin.utils.ExceptionUtilsKt;
 
@@ -108,10 +109,9 @@ public abstract class AbstractBlackBoxCodegenTest extends CodegenTestCase {
         fail("Can't find box method!");
     }
 
-
     @Nullable
     private static String getFacadeFqName(@NotNull KtFile firstFile) {
-        for (KtDeclaration declaration : CodegenUtil.getActualDeclarations(firstFile)) {
+        for (KtDeclaration declaration : CodegenUtil.getActualDeclarations(firstFile, BindingContext.EMPTY)) {
             if (declaration instanceof KtProperty || declaration instanceof KtNamedFunction || declaration instanceof KtTypeAlias) {
                 return JvmFileClassUtil.getFileClassInfoNoResolve(firstFile).getFacadeClassFqName().asString();
             }

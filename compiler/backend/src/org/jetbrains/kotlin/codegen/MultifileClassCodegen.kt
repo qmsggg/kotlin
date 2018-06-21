@@ -243,7 +243,7 @@ class MultifileClassCodegenImpl(
     private fun addDelegateGenerationTasksForDeclarationsInFile(file: KtFile, packageFragment: PackageFragmentDescriptor, partType: Type) {
         val facadeContext = state.rootContext.intoMultifileClass(packageFragment, facadeClassType, partType)
         val memberCodegen = createCodegenForDelegatesInMultifileFacade(facadeContext)
-        for (declaration in CodegenUtil.getActualDeclarations(file)) {
+        for (declaration in CodegenUtil.getActualDeclarations(file, state.bindingContext)) {
             if (declaration is KtNamedFunction || declaration is KtProperty || declaration is KtTypeAlias) {
                 val descriptor = state.bindingContext.get(BindingContext.DECLARATION_TO_DESCRIPTOR, declaration)
                 if (descriptor !is MemberDescriptor) {
@@ -376,7 +376,7 @@ class MultifileClassCodegenImpl(
         }
 
         private fun KtFile.hasDeclarationsForPartClass() =
-                CodegenUtil.getActualDeclarations(this).any { it is KtProperty || it is KtFunction || it is KtTypeAlias }
+            CodegenUtil.getActualDeclarations(this, BindingContext.EMPTY).any { it is KtProperty || it is KtFunction || it is KtTypeAlias }
 
         private fun getCompiledPackageFragment(
                 facadeFqName: FqName, state: GenerationState
